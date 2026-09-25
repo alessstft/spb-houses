@@ -8,6 +8,8 @@ export function setStatus(text = '', isError = false) {
 }
 
 export function toast(text) {
+  // открытое модальное окно перекрывает всё остальное, поэтому показываем сообщение внутри него
+  (document.querySelector('dialog[open]') || document.body).append(toastEl);
   toastEl.textContent = text;
   toastEl.classList.add('on');
   clearTimeout(toastTimer);

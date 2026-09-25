@@ -1,21 +1,10 @@
-import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_FRAME, REGISTRY_SHEETS, STATUS_GROUP } from './config.js';
-import { getPremises } from './premises.js';
+import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_FRAME, REGISTRY_SHEETS } from './config.js';
+import { getPremises, sortPremises } from './premises.js';
 import { registryAddress, shortAddress } from './address.js';
-import { loadScript, naturalCompare, toNumber } from './utils.js';
+import { loadScript, toNumber } from './utils.js';
 
 const THIN = { style: 'thin' };
 const MEDIUM = { style: 'medium' };
-
-function sortPremises(list) {
-  return list.sort(
-    (a, b) =>
-      (STATUS_GROUP[a.status] ?? 3) - (STATUS_GROUP[b.status] ?? 3) ||
-      naturalCompare(a.number, b.number) ||
-      // комнаты идут сразу под своей квартирой
-      (a.status === 'ЧКВ') - (b.status === 'ЧКВ') ||
-      naturalCompare(a.room, b.room),
-  );
-}
 
 // «…, литер А, кв. 3», «…, литер А, пом. 1-Н», «…, литер А, кв. 17, ком. 2,5»
 function premiseAddress(houseAddress, premise) {

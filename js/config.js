@@ -25,6 +25,7 @@ export const COLUMN_ROLES = {
   chkv: [/^чкв$/i],
   roomFlats: [/квартир с комнатами/i],
   company: [/управляющая организация/i, /наименование организации/i],
+  ogrn: [/^огрн/i],
   management: [/способ управления/i],
   demolished: [/дата сноса/i],
 };

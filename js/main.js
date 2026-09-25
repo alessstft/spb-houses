@@ -96,9 +96,9 @@ async function handleExport(house, button) {
 function openHouse(house) {
   openHouseCard(house, state.table, {
     onExport: (button) => handleExport(house, button),
-    onCopy: () =>
-      navigator.clipboard?.writeText(house.address).then(
-        () => toast('Адрес скопирован'),
+    onCopy: (text) =>
+      navigator.clipboard?.writeText(text).then(
+        () => toast('Скопировано'),
         () => toast('Не удалось скопировать'),
       ),
   });
