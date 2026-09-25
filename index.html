@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Дома Санкт-Петербурга — реестр ГИС ЖКХ</title>
+<title>Дома Санкт-Петербурга</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,268 +11,423 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --bg:#eef1f4; --surface:#ffffff; --ink:#1d2733; --muted:#5d6b7a; --line:#d6dde4;
-  --neva:#2e4a62; --ochre:#c28a1e; --ochre-soft:#f6ecd6; --row:#f7f9fb;
+  --bg:#eef1f4; --surface:#fff; --ink:#1d2733; --muted:#5d6b7a; --line:#dde3e9; --hover:#f5f7f9;
+  --neva:#2e4a62; --neva-ink:#fff; --ochre:#c28a1e; --ochre-soft:#f7edd8;
+  --ok:#2f7a4f; --ok-bg:#e3f2e9; --warn:#9a5b00; --warn-bg:#fbeccd; --bad:#b3261e; --bad-bg:#fbe3e1; --nt-bg:#eceff3;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#151b22; --surface:#1d252f; --ink:#e6ebf0; --muted:#97a4b2; --line:#2f3a47;
-    --neva:#8fb2cf; --ochre:#e0ac48; --ochre-soft:#3a3020; --row:#222b36;
+    --bg:#141a21; --surface:#1c242d; --ink:#e7ecf1; --muted:#98a5b3; --line:#2c3743; --hover:#222c37;
+    --neva:#8fb2cf; --neva-ink:#10202e; --ochre:#e0ac48; --ochre-soft:#3a3020;
+    --ok:#7fd1a0; --ok-bg:#1e3a2a; --warn:#f0bf6a; --warn-bg:#3d2f17; --bad:#f19a92; --bad-bg:#43211f; --nt-bg:#27313c;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#151b22; --surface:#1d252f; --ink:#e6ebf0; --muted:#97a4b2; --line:#2f3a47;
-  --neva:#8fb2cf; --ochre:#e0ac48; --ochre-soft:#3a3020; --row:#222b36;
+  --bg:#141a21; --surface:#1c242d; --ink:#e7ecf1; --muted:#98a5b3; --line:#2c3743; --hover:#222c37;
+  --neva:#8fb2cf; --neva-ink:#10202e; --ochre:#e0ac48; --ochre-soft:#3a3020;
+  --ok:#7fd1a0; --ok-bg:#1e3a2a; --warn:#f0bf6a; --warn-bg:#3d2f17; --bad:#f19a92; --bad-bg:#43211f; --nt-bg:#27313c;
 }
 *,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1200px;margin:0 auto;padding:28px 20px 60px}
-header h1{font-size:clamp(24px,3.4vw,34px);line-height:1.15;margin:0 0 6px;font-weight:700;color:var(--neva)}
-header p{margin:0;color:var(--muted);max-width:70ch}
-.facade{height:6px;margin:18px 0 24px;background:repeating-linear-gradient(90deg,var(--ochre) 0 38px,transparent 38px 46px)}
-.drop{border:2px dashed var(--line);background:var(--surface);border-radius:10px;padding:26px;text-align:center;cursor:pointer}
+html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
+.app{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+@media (min-width:760px){.app{padding:32px 28px 64px}}
+
+/* Шапка */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.top h1{margin:0;font-size:clamp(26px,4.2vw,40px);line-height:1.08;font-weight:700;color:var(--neva);letter-spacing:-.01em}
+.top p{margin:6px 0 0;color:var(--muted);font-size:15px}
+.facade{height:7px;margin:18px 0 22px;background:repeating-linear-gradient(90deg,var(--ochre) 0 34px,transparent 34px 42px)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;font-size:15px;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+a.btn{text-decoration:none;color:inherit}
+.btn.primary{background:var(--neva);border-color:var(--neva);color:var(--neva-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn svg{width:18px;height:18px;flex:none}
+.top .btn .s{display:none}
+@media (max-width:520px){.top .btn .l{display:none}.top .btn .s{display:inline}.top .btn{padding:0 12px}}
+
+/* Поиск */
+.search{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:12px}
+@media (min-width:760px){.search{grid-template-columns:minmax(0,1.7fr) minmax(0,1.2fr) auto;align-items:end;padding:18px 20px}}
+.field label{display:block;font-size:14px;font-weight:500;margin-bottom:6px}
+.inp{position:relative}
+.inp svg{position:absolute;left:13px;top:50%;width:18px;height:18px;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.inp input{width:100%;height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 42px 0 40px;font-size:16px}
+.inp input:focus{outline:none;border-color:var(--neva);background:var(--surface);box-shadow:0 0 0 3px var(--ochre-soft)}
+.inp input::placeholder{color:var(--muted);opacity:.8}
+.inp input::-webkit-search-cancel-button{display:none}
+.clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:none;border-radius:8px;cursor:pointer;color:var(--muted);display:none;font-size:20px;line-height:1}
+.clear:hover{background:var(--hover)}
+.inp.has .clear{display:block}
+.hint{margin:6px 0 0;font-size:13px;color:var(--muted)}
+.search .btn{height:48px}
+@media (max-width:759px){.search{gap:14px}.search .hint{display:none}.search .reset{justify-self:start;height:40px}.field label{margin-bottom:4px}}
+.search .reset.off{display:none}
+
+/* Итоги */
+.found{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;margin:22px 2px 10px}
+.found h2{margin:0;font-size:18px;font-weight:600}
+.found span{font-size:14px;color:var(--muted)}
+
+/* Список домов */
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.cols{display:grid;grid-template-columns:minmax(0,3.2fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) minmax(0,.9fr) 20px;gap:16px;align-items:center}
+.lhead{padding:12px 20px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line);background:var(--hover)}
+.lhead .num,.item .num{text-align:right}
+.item{width:100%;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;padding:14px 20px;cursor:pointer}
+.item:last-child{border-bottom:0}
+.item:hover{background:var(--hover)}
+.item:focus-visible{outline-offset:-3px}
+.a1{font-weight:600;font-size:16px;line-height:1.35}
+.a2{font-size:13px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell{font-size:15px}
+.cell .lbl{display:none}
+.chev{color:var(--muted);width:20px;height:20px}
+mark{background:var(--ochre-soft);color:inherit;border-radius:3px;padding:0 1px}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:500;background:var(--nt-bg)}
+.badge.ok{background:var(--ok-bg);color:var(--ok)} .badge.warn{background:var(--warn-bg);color:var(--warn)} .badge.bad{background:var(--bad-bg);color:var(--bad)}
+@media (max-width:759px){
+  .lhead{display:none}
+  .item{display:block;position:relative;padding:16px 44px 16px 16px}
+  .item .a2{white-space:normal}
+  .item .facts{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px}
+  .cell{font-size:14px}
+  .cell .lbl{display:inline;color:var(--muted);margin-right:4px}
+  .cell.num{text-align:left}
+  .cell:empty{display:none}
+  .chev{position:absolute;right:14px;top:50%;transform:translateY(-50%)}
+}
+@media (min-width:760px){.item .facts{display:contents}}
+.more{display:flex;justify-content:center;margin-top:16px}
+.nores{padding:40px 20px;text-align:center;color:var(--muted)}
+.nores strong{display:block;color:var(--ink);font-size:17px;margin-bottom:4px}
+
+/* Пустое состояние */
+.drop{background:var(--surface);border:2px dashed var(--line);border-radius:16px;padding:44px 20px;text-align:center}
 .drop.over{border-color:var(--ochre);background:var(--ochre-soft)}
-.drop strong{display:block;font-size:17px;margin-bottom:4px}
-.drop span{color:var(--muted);font-size:14px}
-.drop input{display:none}
-.status{margin:12px 0 0;color:var(--muted);font-size:14px;min-height:21px}
-.status.err{color:#c0392b}
-.panel{display:none;margin-top:22px}
-.panel.on{display:block}
-.controls{display:grid;grid-template-columns:2fr 1.3fr auto;gap:12px;align-items:end}
-label.f{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
-input[type=search],select{width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
-input[type=search]:focus,select:focus,button:focus-visible,.drop:focus-visible{outline:3px solid var(--ochre);outline-offset:1px}
-.chk{display:flex;gap:8px;align-items:center;font-size:14px;padding-bottom:10px;white-space:nowrap}
-.summary{display:flex;flex-wrap:wrap;gap:6px 24px;margin:18px 0 10px;font-size:14px;color:var(--muted)}
-.summary b{color:var(--ink);font-size:20px;font-weight:600;margin-right:4px}
-.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px}
-table{border-collapse:collapse;width:100%;font-size:14px}
-th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-th{position:sticky;top:0;background:var(--surface);font-weight:600;color:var(--neva);white-space:nowrap}
-tbody tr.r{cursor:pointer}
-tbody tr.r:hover{background:var(--row)}
-tbody tr.r:focus-visible{outline:2px solid var(--ochre);outline-offset:-2px}
-td.addr{min-width:280px}
-mark{background:var(--ochre-soft);color:inherit;padding:0 1px;border-radius:2px}
-tr.detail td{background:var(--row);padding:14px 16px}
-dl{display:grid;grid-template-columns:minmax(160px,280px) 1fr;gap:4px 16px;margin:0;font-size:13px}
-dt{color:var(--muted)} dd{margin:0;word-break:break-word}
-.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px;font-size:14px;color:var(--muted)}
-button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 14px;cursor:pointer}
-button:disabled{opacity:.4;cursor:default}
-.empty{padding:30px;text-align:center;color:var(--muted)}
-@media (max-width:720px){.controls{grid-template-columns:1fr}.chk{padding-bottom:0}dl{grid-template-columns:1fr}}
+.drop h2{margin:0 0 6px;font-size:21px}
+.drop p{margin:0 auto 18px;color:var(--muted);max-width:46ch}
+.status{margin:12px 2px 0;font-size:14px;color:var(--muted);min-height:21px}
+.status.err{color:var(--bad)}
+.hidden{display:none!important}
+.source{margin-top:22px;font-size:13px;color:var(--muted)}
+
+/* Карточка дома */
+dialog.sheet{border:0;padding:0;margin:0;background:var(--surface);color:var(--ink);max-width:none;max-height:none;box-shadow:-10px 0 40px rgba(20,30,40,.18)}
+dialog.sheet::backdrop{background:rgba(15,22,30,.45)}
+@media (min-width:760px){
+  dialog.sheet{position:fixed;inset:0 0 0 auto;width:min(480px,100%);height:100%}
+  .sh-head{padding-top:calc(18px + env(safe-area-inset-top,0px))}
+}
+@media (max-width:759px){
+  dialog.sheet{position:fixed;inset:auto 0 0 0;width:100%;height:auto;max-height:88%;border-radius:18px 18px 0 0}
+  .sh-body{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))!important}
+  .grab{display:block!important}
+}
+dialog.sheet[open]{display:flex;flex-direction:column}
+@media (prefers-reduced-motion:no-preference){
+  @media (min-width:760px){dialog.sheet[open]{animation:inR .2s ease-out}}
+  @media (max-width:759px){dialog.sheet[open]{animation:inB .22s ease-out}}
+}
+@keyframes inR{from{transform:translateX(40px);opacity:0}}
+@keyframes inB{from{transform:translateY(60px);opacity:.3}}
+.grab{display:none;width:40px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 0}
+.sh-head{display:flex;gap:12px;align-items:flex-start;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+.sh-head h2{margin:0;font-size:20px;line-height:1.3;flex:1}
+.sh-head .sub{display:block;font-size:14px;font-weight:400;color:var(--muted);margin-top:4px}
+.x{width:40px;height:40px;border:0;border-radius:10px;background:var(--hover);cursor:pointer;font-size:22px;line-height:1;flex:none}
+.sh-body{overflow-y:auto;padding:16px 20px 28px;-webkit-overflow-scrolling:touch}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.actions .btn{min-height:40px;font-size:14px;flex:1 1 auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--hover);border-radius:12px;padding:12px 14px}
+.kpi b{display:block;font-size:18px;white-space:nowrap;font-weight:600;line-height:1.2}
+.kpi span{font-size:13px;color:var(--muted)}
+.grp h3{font-size:15px;margin:18px 0 8px;color:var(--neva)}
+.grp dl{margin:0;display:grid;grid-template-columns:minmax(120px,42%) 1fr;gap:8px 14px;font-size:14px}
+.grp dt{color:var(--muted)} .grp dd{margin:0;word-break:break-word}
+details.grp summary{cursor:pointer;font-size:15px;font-weight:600;color:var(--neva);margin:18px 0 8px}
+@media (max-width:420px){.grp dl{grid-template-columns:1fr;gap:2px}.grp dd{margin-bottom:8px}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+.toast.on{opacity:1}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Дома Санкт-Петербурга</h1>
-    <p>Список домов из реестра объектов жилищного фонда ГИС ЖКХ с поиском по адресу и фильтром по улице.</p>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Дома Санкт-Петербурга</h1>
+      <p>Реестр жилищного фонда по данным ГИС ЖКХ</p>
+    </div>
+    <label class="btn" id="upBtn" title="Загрузить файл с домами">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+      <span class="l">Загрузить файл</span><span class="s">Файл</span>
+      <input type="file" class="hidden" accept=".csv,.txt,.xlsx,.xls" data-file>
+    </label>
   </header>
   <div class="facade" aria-hidden="true"></div>
 
-  <label class="drop" id="drop" tabindex="0">
-    <strong>Загрузить файл с домами</strong>
-    <span>Файл spb_houses.csv (свод по домам) или любой CSV/Excel из ГИС ЖКХ. Файл обрабатывается в браузере и никуда не отправляется.</span>
-    <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls">
-  </label>
+  <section id="empty" class="drop">
+    <h2>Загрузите список домов</h2>
+    <p>Выберите файл spb_houses.csv или другую выгрузку из ГИС ЖКХ в формате CSV или Excel. Можно просто перетащить его сюда.</p>
+    <label class="btn primary">
+      Выбрать файл
+      <input type="file" class="hidden" accept=".csv,.txt,.xlsx,.xls" data-file>
+    </label>
+  </section>
   <p class="status" id="status" role="status"></p>
 
-  <section class="panel" id="panel">
-    <div class="controls">
-      <div>
-        <label class="f" for="q">Поиск по адресу</label>
-        <input type="search" id="q" placeholder="Например: Невский 28 или Лиговский">
+  <main id="main" class="hidden">
+    <section class="search" aria-label="Поиск домов">
+      <div class="field">
+        <label for="q">Адрес</label>
+        <div class="inp" id="qWrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="q" placeholder="Улица и номер дома" autocomplete="off" enterkeyhint="search">
+          <button class="clear" type="button" data-clear="q" aria-label="Очистить адрес">×</button>
+        </div>
+        <p class="hint">Например: Фонтанки 38 или Невский 28</p>
       </div>
-      <div>
-        <label class="f" for="street">Улица</label>
-        <select id="street"><option value="">Все улицы</option></select>
+      <div class="field">
+        <label for="st">Улица</label>
+        <div class="inp" id="stWrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <input type="search" id="st" list="streets" placeholder="Все улицы" autocomplete="off">
+          <button class="clear" type="button" data-clear="st" aria-label="Очистить улицу">×</button>
+        </div>
+        <datalist id="streets"></datalist>
+        <p class="hint" id="stHint">Начните вводить и выберите из списка</p>
       </div>
-      <label class="chk"><input type="checkbox" id="spb" checked> Только Санкт-Петербург</label>
+      <button class="btn reset" type="button" id="reset">Сбросить</button>
+    </section>
+
+    <div class="found">
+      <h2 id="foundTitle"></h2>
+      <span id="foundSub"></span>
     </div>
 
-    <div class="summary" id="summary"></div>
-    <div class="tablebox"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
-    <div class="pager">
-      <button id="prev">Назад</button><span id="pageinfo"></span><button id="next">Вперёд</button>
-    </div>
-  </section>
+    <div class="list" id="list"></div>
+    <div class="more"><button class="btn" type="button" id="more"></button></div>
+    <p class="source" id="source"></p>
+  </main>
 </div>
+
+<dialog class="sheet" id="dlg" aria-labelledby="dTitle">
+  <div class="grab" aria-hidden="true"></div>
+  <div class="sh-head">
+    <h2 id="dTitle"></h2>
+    <button class="x" type="button" id="dClose" aria-label="Закрыть">×</button>
+  </div>
+  <div class="sh-body" id="dBody"></div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
 
 <script>
 (function(){
   const $ = id => document.getElementById(id);
-  const PAGE = 50;
-  let rows = [], cols = [], addrCol = null, showCols = [], filtered = [], page = 0, openIdx = null;
+  const STEP = 40;
+  let cols=[], rows=[], R={}, filtered=[], shown=STEP, fileName='';
 
-  const STREET_RE = /(улица|ул\.?|проспект|пр-кт|пр\.|переулок|пер\.?|набережная|наб\.?|шоссе|ш\.|бульвар|б-р|площадь|пл\.?|линия|линии|дорога|дор\.?|аллея|проезд|пр-д|тупик|канал|остров|кв-л|квартал)(\s|$|,)/i;
+  const STREET_RE = /(^|\s)(улица|ул\.?|проспект|пр-кт|пр\.|переулок|пер\.?|набережная|наб\.?|шоссе|ш\.|бульвар|б-р|площадь|пл\.?|линия|дорога|дор\.?|аллея|проезд|пр-д|тупик|канал|кв-л|квартал|мост|спуск|остров)(\s|$)/i;
+  const ROLES = {
+    addr:[/полный адрес/i,/^адрес/i,/адрес/i], type:[/^тип дома/i], state:[/^состояние/i],
+    area:[/общая площадь/i], living:[/жилая площадь/i], prem:[/помещений всего/i],
+    zh:[/^жилых помещ/i], nz:[/нежилых помещ/i], rooms:[/^комнат/i],
+    uo:[/управляющая организация/i,/наименование организации/i], sp:[/способ управления/i],
+    year:[/год.*(постр|ввод)/i], floors:[/этаж/i], demol:[/дата сноса/i]
+  };
 
-  function setStatus(t, err){ const s=$('status'); s.textContent=t; s.className='status'+(err?' err':''); }
+  const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const norm = s => String(s).toLowerCase().replace(/ё/g,'е').replace(/[.,«»"]/g,' ').replace(/\s+/g,' ');
+  const num = v => { const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.')); return isNaN(n)?null:n; };
+  const fmt = (v,d=0) => { const n=num(v); return n===null? String(v??'') : n.toLocaleString('ru-RU',{maximumFractionDigits:d}); };
+  const val = (r,k) => R[k]>=0 ? r[R[k]] : '';
+
+  function setStatus(t,err){ const s=$('status'); s.textContent=t||''; s.className='status'+(err?' err':''); }
+  let tt; function toast(t){ const el=$('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),1800); }
+
+  function shortAddr(a){ return String(a).replace(/^\s*\d{6},\s*/,'').replace(/^(г\.?\s*)?Санкт-Петербург(\s*г\.?)?,\s*/i,''); }
+  function shortOrg(s){
+    if(!s) return '';
+    return String(s)
+      .replace(/ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ/gi,'ООО')
+      .replace(/ПУБЛИЧНОЕ АКЦИОНЕРНОЕ ОБЩЕСТВО/gi,'ПАО')
+      .replace(/АКЦИОНЕРНОЕ ОБЩЕСТВО/gi,'АО')
+      .replace(/ТОВАРИЩЕСТВО СОБСТВЕННИКОВ ЖИЛЬЯ/gi,'ТСЖ')
+      .replace(/ТОВАРИЩЕСТВО СОБСТВЕННИКОВ НЕДВИЖИМОСТИ/gi,'ТСН')
+      .replace(/ЖИЛИЩНО-СТРОИТЕЛЬНЫЙ КООПЕРАТИВ/gi,'ЖСК')
+      .replace(/"([^"]+)"/g,'«$1»').replace(/"/g,'');
+  }
+  const SP = {'УО':'Управляющая организация','НУ':'Непосредственное управление','ТСЖ':'ТСЖ','ЖСК':'ЖСК'};
+  function stateCls(s){ s=String(s).toLowerCase(); return /аварий/.test(s)?'bad':/ветх|снес/.test(s)?'warn':/исправ/.test(s)?'ok':''; }
+  function streetOf(a){
+    const parts=String(a).split(',').map(s=>s.trim());
+    const p=parts.find(s=>STREET_RE.test(s) && !/^(д\.|дом|корп|стр|лит)/i.test(s));
+    return p ? p.replace(/\s+/g,' ') : '';
+  }
 
   function decode(buf){
-    let t = new TextDecoder('utf-8').decode(buf);
-    const bad = (t.slice(0,20000).match(/\uFFFD/g)||[]).length;
-    if (bad > 5) { try { t = new TextDecoder('windows-1251').decode(buf); } catch(e){} }
+    let t=new TextDecoder('utf-8').decode(buf);
+    if((t.slice(0,20000).match(/\uFFFD/g)||[]).length>5){ try{ t=new TextDecoder('windows-1251').decode(buf); }catch(e){} }
     return t.replace(/^\uFEFF/,'');
   }
-
-  function parseBuffer(buf, name){
+  function parseBuffer(buf,name){
     let data;
-    if (/\.(xlsx|xls)$/i.test(name)) {
-      const wb = XLSX.read(buf, {type:'array'});
-      data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:'', raw:false});
-    } else {
-      data = Papa.parse(decode(buf), {skipEmptyLines:true}).data;
-    }
-    load(data, name);
+    if(/\.(xlsx|xls)$/i.test(name)){
+      const wb=XLSX.read(buf,{type:'array'});
+      data=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
+    } else data=Papa.parse(decode(buf),{skipEmptyLines:true}).data;
+    load(data,name);
   }
 
-  // Сохранение последнего загруженного файла в браузере (IndexedDB), чтобы он не пропадал после обновления
+  function load(aoa,name){
+    aoa=aoa.filter(r=>r.some(c=>String(c).trim()));
+    if(aoa.length<2) throw new Error('в файле нет строк с данными');
+    let h=0,bn=-1;
+    for(let i=0;i<Math.min(15,aoa.length);i++){ const n=aoa[i].filter(c=>String(c).trim()&&isNaN(Number(c))).length; if(n>bn){bn=n;h=i;} }
+    cols=aoa[h].map((c,i)=>String(c).trim()||('Столбец '+(i+1)));
+    rows=aoa.slice(h+1).map(r=>cols.map((_,i)=>String(r[i]??'').trim()));
+    R={};
+    for(const k in ROLES){ R[k]=-1; for(const re of ROLES[k]){ const i=cols.findIndex((c,j)=>re.test(c)&&!Object.values(R).includes(j)); if(i>=0){R[k]=i;break;} } }
+    if(R.addr<0){ let best=-1; cols.forEach((_,i)=>{ const n=rows.slice(0,300).filter(r=>STREET_RE.test(r[i])).length; if(n>best){best=n;R.addr=i;} }); }
+    rows.forEach(r=>{ const a=r[R.addr]; r._short=shortAddr(a); r._street=streetOf(a); r._n=' '+norm(a)+' '; r._sn=norm(r._street); });
+    rows.sort((a,b)=>a._short.localeCompare(b._short,'ru',{numeric:true}));
+
+    const streets=[...new Set(rows.map(r=>r._street).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru'));
+    $('streets').innerHTML=streets.map(s=>'<option value="'+esc(s)+'">').join('');
+    $('stHint').textContent='Начните вводить и выберите из списка ('+streets.length.toLocaleString('ru-RU')+' улиц)';
+    fileName=name;
+    $('source').textContent='Источник: '+name+', '+rows.length.toLocaleString('ru-RU')+' строк.';
+    $('empty').classList.add('hidden'); $('main').classList.remove('hidden'); setStatus('');
+    apply();
+  }
+
+  function apply(){
+    const terms=norm($('q').value).split(' ').filter(Boolean);
+    const st=norm($('st').value).trim();
+    filtered=rows.filter(r=>(!st||r._sn.includes(st)) && terms.every(t=>r._n.includes(t)));
+    shown=STEP;
+    $('qWrap').classList.toggle('has',!!$('q').value); $('stWrap').classList.toggle('has',!!$('st').value);
+    $('reset').classList.toggle('off',!($('q').value||$('st').value));
+    render();
+  }
+
+  function hl(text){
+    const terms=$('q').value.trim().split(/[\s,.]+/).filter(Boolean);
+    let s=esc(text);
+    if(!terms.length) return s;
+    const re=new RegExp('('+terms.map(t=>esc(t).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/е|ё/gi,'[её]')).join('|')+')','gi');
+    return s.replace(re,'<mark>$1</mark>');
+  }
+
+  function plural(n,a,b,c){ const m10=n%10,m100=n%100; return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<12||m100>14)?b:c); }
+
+  function render(){
+    const n=filtered.length;
+    const filteredOn=!!($('q').value.trim()||$('st').value.trim());
+    $('foundTitle').textContent= n ? (filteredOn?'Найдено: ':'Всего: ')+n.toLocaleString('ru-RU')+' '+plural(n,'дом','дома','домов') : 'Ничего не найдено';
+    const sc=new Set(filtered.map(r=>r._street).filter(Boolean)).size;
+    $('foundSub').textContent= n ? 'на '+sc.toLocaleString('ru-RU')+' '+plural(sc,'улице','улицах','улицах') : '';
+    const L=$('list');
+    if(!n){
+      L.innerHTML='<div class="nores"><strong>По этому запросу домов нет</strong>Проверьте написание, уберите номер дома или нажмите «Сбросить».</div>';
+      $('more').parentElement.classList.add('hidden'); return;
+    }
+    const head='<div class="lhead cols"><div>Адрес</div><div>Тип дома</div><div>Состояние</div><div class="num">Площадь, м²</div><div class="num">Помещений</div><div></div></div>';
+    L.innerHTML=head+filtered.slice(0,shown).map((r,i)=>{
+      const uo=shortOrg(val(r,'uo')); const stt=val(r,'state'); const area=val(r,'area'); const prem=val(r,'prem');
+      return '<button class="item cols" type="button" data-i="'+i+'">'+
+        '<div><div class="a1">'+hl(r._short)+'</div>'+(uo?'<div class="a2">'+esc(uo)+'</div>':'')+'</div>'+
+        '<div class="facts">'+
+          '<div class="cell">'+(val(r,'type')?'<span class="lbl">Тип:</span>'+esc(val(r,'type')):'')+'</div>'+
+          '<div class="cell">'+(stt?'<span class="badge '+stateCls(stt)+'">'+esc(stt)+'</span>':'')+'</div>'+
+          '<div class="cell num">'+(area?'<span class="lbl">Площадь:</span>'+fmt(area)+'<span class="lbl" style="margin:0 0 0 3px">м²</span>':'')+'</div>'+
+          '<div class="cell num">'+(prem?'<span class="lbl">Помещений:</span>'+fmt(prem):'')+'</div>'+
+        '</div>'+
+        '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>'+
+      '</button>';
+    }).join('');
+    const left=n-shown;
+    $('more').parentElement.classList.toggle('hidden',left<=0);
+    $('more').textContent='Показать ещё '+Math.min(STEP,left)+' из '+left.toLocaleString('ru-RU');
+  }
+
+  // Карточка дома
+  function openHouse(r){
+    $('dTitle').innerHTML=esc(r._short)+'<span class="sub">'+esc(r[R.addr])+'</span>';
+    const k=[];
+    if(val(r,'area')) k.push([fmt(val(r,'area'),1)+' м²','общая площадь']);
+    if(val(r,'living')) k.push([fmt(val(r,'living'),1)+' м²','жилая площадь']);
+    if(val(r,'prem')) k.push([fmt(val(r,'prem')),'помещений']);
+    if(val(r,'zh')) k.push([fmt(val(r,'zh')),'жилых']);
+    if(val(r,'nz')) k.push([fmt(val(r,'nz')),'нежилых']);
+    if(val(r,'rooms') && num(val(r,'rooms'))) k.push([fmt(val(r,'rooms')),'комнат в коммуналках']);
+
+    const used=new Set(), groups=[];
+    const row=(i,label,v)=>{ used.add(i); const x=v??r[i]; return (x&&x!=='-')?'<dt>'+esc(label||cols[i])+'</dt><dd>'+esc(x)+'</dd>':''; };
+    const byRole=(key,label,v)=> R[key]>=0 ? row(R[key],label,v) : '';
+    groups.push(['О доме', byRole('type','Тип дома')+byRole('state','Состояние')+byRole('year')+byRole('floors')+byRole('demol')]);
+    groups.push(['Управление', byRole('sp','Способ управления',SP[val(r,'sp')]||val(r,'sp'))+byRole('uo','Организация',shortOrg(val(r,'uo')))]);
+    ['addr','area','living','prem','zh','nz','rooms'].forEach(k2=>{ if(R[k2]>=0) used.add(R[k2]); });
+    let codes='', other='';
+    cols.forEach((c,i)=>{ if(used.has(i)) return; const h=row(i); if(/guid|идентиф|октмо|огрн|кпп|кадастр/i.test(c)) codes+=h; else other+=h; });
+    if(other) groups.push(['Прочие сведения',other]);
+
+    const map='https://yandex.ru/maps/?text='+encodeURIComponent(r[R.addr]);
+    $('dBody').innerHTML=
+      '<div class="actions"><a class="btn" href="'+map+'" target="_blank" rel="noopener">Показать на карте</a>'+
+      '<button class="btn" type="button" id="copyA">Скопировать адрес</button></div>'+
+      (k.length?'<div class="kpis">'+k.map(([b,s])=>'<div class="kpi"><b>'+b+'</b><span>'+s+'</span></div>').join('')+'</div>':'')+
+      groups.filter(g=>g[1]).map(g=>'<section class="grp"><h3>'+g[0]+'</h3><dl>'+g[1]+'</dl></section>').join('')+
+      (codes?'<details class="grp"><summary>Коды и идентификаторы</summary><dl>'+codes+'</dl></details>':'');
+    $('copyA').onclick=()=>{ navigator.clipboard?.writeText(r[R.addr]).then(()=>toast('Адрес скопирован'),()=>toast('Не удалось скопировать')); };
+    const d=$('dlg'); if(!d.open) d.showModal(); $('dBody').scrollTop=0;
+  }
+  $('dClose').onclick=()=>$('dlg').close();
+  $('dlg').addEventListener('click',e=>{ if(e.target===$('dlg')) $('dlg').close(); });
+
+  $('list').addEventListener('click',e=>{ const b=e.target.closest('.item'); if(b) openHouse(filtered[+b.dataset.i]); });
+  $('more').onclick=()=>{ shown+=STEP; render(); };
+
+  let t; ['q','st'].forEach(id=>$(id).addEventListener('input',()=>{ clearTimeout(t); t=setTimeout(apply,140); }));
+  $('q').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.target.blur(); } });
+  document.querySelectorAll('[data-clear]').forEach(b=>b.onclick=()=>{ const i=$(b.dataset.clear); i.value=''; apply(); i.focus(); });
+  $('reset').onclick=()=>{ $('q').value=''; $('st').value=''; apply(); };
+
+  // Хранение последнего загруженного файла в браузере
   function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('spb-houses',1); r.onupgradeneeded=()=>r.result.createObjectStore('files'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
   async function saveFile(buf,name){ try{ const db=await idb(); db.transaction('files','readwrite').objectStore('files').put({buf,name},'last'); }catch(e){} }
   async function loadSaved(){ try{ const db=await idb(); return await new Promise(res=>{ const q=db.transaction('files').objectStore('files').get('last'); q.onsuccess=()=>res(q.result||null); q.onerror=()=>res(null); }); }catch(e){ return null; } }
 
   function readFile(f){
-    setStatus('Читаю файл «'+f.name+'»…');
-    const r = new FileReader();
-    r.onerror = () => setStatus('Не удалось прочитать файл. Попробуйте сохранить его заново и загрузить ещё раз.', true);
-    r.onload = () => {
-      try { parseBuffer(r.result, f.name); saveFile(r.result, f.name); }
-      catch(e){ setStatus('Файл не распознан: '+e.message, true); }
-    };
+    setStatus('Открываю «'+f.name+'»…');
+    const r=new FileReader();
+    r.onerror=()=>setStatus('Файл не прочитался. Сохраните его заново и выберите ещё раз.',true);
+    r.onload=()=>{ try{ parseBuffer(r.result,f.name); saveFile(r.result,f.name); toast('Файл загружен'); }catch(e){ setStatus('Этот файл не подходит: '+e.message+'. Нужен CSV или Excel со столбцом адреса.',true); } };
     r.readAsArrayBuffer(f);
   }
+  document.querySelectorAll('[data-file]').forEach(inp=>inp.addEventListener('change',()=>{ if(inp.files[0]) readFile(inp.files[0]); inp.value=''; }));
+  const drop=$('empty');
+  ['dragenter','dragover'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>document.addEventListener(ev,e=>{ e.preventDefault(); if(ev==='drop'||!e.relatedTarget) drop.classList.remove('over'); }));
+  document.addEventListener('drop',e=>{ const f=e.dataTransfer?.files[0]; if(f) readFile(f); });
 
-  // При открытии: сначала последний загруженный вами файл, иначе spb_houses.csv, лежащий рядом со страницей
-  async function init(){
-    const saved = await loadSaved();
-    if (saved){ try{ parseBuffer(saved.buf, saved.name); return; }catch(e){} }
+  (async function init(){
+    const saved=await loadSaved();
+    if(saved){ try{ parseBuffer(saved.buf,saved.name); return; }catch(e){} }
     try{
       setStatus('Загружаю список домов…');
-      const resp = await fetch('spb_houses.csv', {cache:'no-cache'});
-      if (!resp.ok) throw 0;
-      parseBuffer(await resp.arrayBuffer(), 'spb_houses.csv');
+      const resp=await fetch('spb_houses.csv',{cache:'no-cache'});
+      if(!resp.ok) throw 0;
+      parseBuffer(await resp.arrayBuffer(),'spb_houses.csv');
     }catch(e){ setStatus(''); }
-  }
-
-  function findHeaderRow(aoa){
-    // header row = first of the top 15 rows with the most non-empty text cells
-    let best=0, bestN=-1;
-    for (let i=0;i<Math.min(15,aoa.length);i++){
-      const n = aoa[i].filter(c=>String(c).trim() && isNaN(Number(c))).length;
-      if (n>bestN){best=i;bestN=n;}
-    }
-    return best;
-  }
-
-  function load(aoa, name){
-    aoa = aoa.filter(r => r.some(c => String(c).trim()));
-    if (aoa.length < 2){ setStatus('В файле нет строк с данными.', true); return; }
-    const h = findHeaderRow(aoa);
-    cols = aoa[h].map((c,i)=> String(c).trim() || ('Столбец '+(i+1)));
-    rows = aoa.slice(h+1).map(r => cols.map((_,i)=> String(r[i] ?? '').trim()));
-
-    addrCol = cols.findIndex(c => /полный адрес/i.test(c));
-    if (addrCol<0) addrCol = cols.findIndex(c => /адрес/i.test(c));
-    if (addrCol<0){
-      let best=-1, bi=0;
-      cols.forEach((_,i)=>{ const n = rows.slice(0,300).filter(r=>STREET_RE.test(r[i])).length; if(n>best){best=n;bi=i;} });
-      addrCol = bi;
-    }
-    const pref = [/управляющая организация|наименование организации/i,/тип дома/i,/состояни/i,/общая площадь/i,/помещений всего/i,/год.*(постр|ввод)/i,/этаж/i];
-    showCols = [];
-    pref.forEach(re=>{ const i = cols.findIndex((c,j)=>re.test(c) && j!==addrCol && !showCols.includes(j)); if(i>=0) showCols.push(i); });
-    if (showCols.length<3) cols.forEach((_,i)=>{ if(showCols.length<4 && i!==addrCol && !showCols.includes(i)) showCols.push(i); });
-    showCols = showCols.slice(0,5);
-
-    rows.forEach(r => { r._street = streetOf(r[addrCol]); r._lc = r[addrCol].toLowerCase().replace(/ё/g,'е'); });
-
-    const hasSpb = rows.some(r=>/санкт-петербург|спб/i.test(r[addrCol]));
-    $('spb').checked = hasSpb; $('spb').disabled = !hasSpb;
-
-    fillStreets();
-    $('thead').innerHTML = '<tr><th>Адрес</th><th>Улица</th>'+showCols.map(i=>'<th>'+esc(cols[i])+'</th>').join('')+'</tr>';
-    $('panel').classList.add('on');
-    setStatus('Загружено: «'+name+'», '+rows.length.toLocaleString('ru-RU')+' строк, '+cols.length+' столбцов. Адрес берётся из столбца «'+cols[addrCol]+'».');
-    apply();
-  }
-
-  function streetOf(a){
-    if(!a) return '';
-    const parts = a.split(',').map(s=>s.trim());
-    const p = parts.find(s => STREET_RE.test(s+' ') && !/^(г\.?|город|пос|п\.|д\.|дом|корп|стр|лит)/i.test(s));
-    return p ? p.replace(/\s+/g,' ') : '';
-  }
-
-  function fillStreets(){
-    const src = $('spb').checked ? rows.filter(isSpb) : rows;
-    const m = new Map();
-    src.forEach(r=>{ if(r._street) m.set(r._street,(m.get(r._street)||0)+1); });
-    const list = [...m.entries()].sort((a,b)=>a[0].localeCompare(b[0],'ru'));
-    const sel = $('street'), cur = sel.value;
-    sel.innerHTML = '<option value="">Все улицы ('+list.length.toLocaleString('ru-RU')+')</option>' +
-      list.map(([s,n])=>'<option value="'+esc(s)+'">'+esc(s)+' — '+n+'</option>').join('');
-    if (m.has(cur)) sel.value = cur;
-  }
-
-  const isSpb = r => /санкт-петербург|спб/i.test(r[addrCol]);
-
-  function apply(){
-    const terms = $('q').value.toLowerCase().replace(/ё/g,'е').split(/[\s,]+/).filter(Boolean);
-    const st = $('street').value, spb = $('spb').checked && !$('spb').disabled;
-    filtered = rows.filter(r => (!spb || isSpb(r)) && (!st || r._street===st) && terms.every(t=>r._lc.includes(t)));
-    page = 0; openIdx = null; render();
-  }
-
-  function hl(text){
-    const terms = $('q').value.trim().split(/[\s,]+/).filter(t=>t.length>0);
-    let s = esc(text);
-    terms.forEach(t=>{ s = s.replace(new RegExp('('+esc(t).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>'); });
-    return s;
-  }
-
-  function render(){
-    const streets = new Set(filtered.map(r=>r._street).filter(Boolean)).size;
-    $('summary').innerHTML = '<span><b>'+filtered.length.toLocaleString('ru-RU')+'</b>домов найдено</span><span><b>'+streets.toLocaleString('ru-RU')+'</b>улиц</span><span><b>'+rows.length.toLocaleString('ru-RU')+'</b>строк в файле</span>';
-    const pages = Math.max(1, Math.ceil(filtered.length/PAGE));
-    const slice = filtered.slice(page*PAGE, page*PAGE+PAGE);
-    const tb = $('tbody');
-    if (!slice.length){ tb.innerHTML = '<tr><td colspan="'+(2+showCols.length)+'" class="empty">Ничего не найдено. Уберите часть слов из поиска или выберите «Все улицы».</td></tr>'; }
-    else tb.innerHTML = slice.map((r,k)=>{
-      const idx = page*PAGE+k;
-      let h = '<tr class="r" tabindex="0" data-i="'+idx+'" aria-expanded="'+(openIdx===idx)+'"><td class="addr">'+hl(r[addrCol])+'</td><td>'+esc(r._street)+'</td>'+showCols.map(i=>'<td>'+esc(r[i])+'</td>').join('')+'</tr>';
-      if (openIdx===idx) h += '<tr class="detail"><td colspan="'+(2+showCols.length)+'"><dl>'+cols.map((c,i)=> r[i] ? '<dt>'+esc(c)+'</dt><dd>'+esc(r[i])+'</dd>' : '').join('')+'</dl></td></tr>';
-      return h;
-    }).join('');
-    $('pageinfo').textContent = 'Страница '+(page+1)+' из '+pages;
-    $('prev').disabled = page===0; $('next').disabled = page>=pages-1;
-  }
-
-  function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  const toggle = tr => { const i=+tr.dataset.i; openIdx = openIdx===i?null:i; render(); };
-  $('tbody').addEventListener('click', e=>{ const tr=e.target.closest('tr.r'); if(tr) toggle(tr); });
-  $('tbody').addEventListener('keydown', e=>{ const tr=e.target.closest('tr.r'); if(tr && (e.key==='Enter'||e.key===' ')){e.preventDefault();toggle(tr);} });
-
-  let t; $('q').addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(apply,150); });
-  $('street').addEventListener('change', apply);
-  $('spb').addEventListener('change', ()=>{ fillStreets(); apply(); });
-  $('prev').onclick = ()=>{ page--; openIdx=null; render(); };
-  $('next').onclick = ()=>{ page++; openIdx=null; render(); };
-
-  const drop=$('drop'), inp=$('file');
-  inp.addEventListener('change', ()=> inp.files[0] && readFile(inp.files[0]));
-  drop.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();inp.click();} });
-  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
-  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
-  drop.addEventListener('drop', e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(f); });
-  init();
+  })();
 })();
 </script>
 </body>
