@@ -1,5 +1,8 @@
 # Сворачивает выгрузку ГИС ЖКХ (строка = помещение) в список домов.
 # Запуск: cat выгрузка*.csv | awk -f scripts/houses.awk > data/spb_houses.csv
+#
+# Статусы помещений считаются по тем же правилам, что в status.awk:
+# МКД, КВ, НЖ, ОИ, ЧКВ.
 
 BEGIN { FS = "|"; OFS = "|" }
 
@@ -17,27 +20,52 @@ $1 == "Адрес ОЖФ" { next }   # заголовки частей выгр�
     area[house]    = $11; living[house] = $12; demolished[house] = $17
   }
 
-  # помещение считаем один раз, даже если у него несколько комнат
-  if ($22 != "") {
-    key = house SUBSEP $22
-    if (!(key in seen)) {
-      seen[key] = 1
-      premises[house]++
-      if ($16 == "Жилое") livingCount[house]++
-      else nonLiving[house]++
-    }
+  type = trim($16); room = trim($19); cad = trim($20)
+  if (cad == "нет" || cad == "-") cad = ""
+  st = status(type, cad, room)
+
+  if (st == "МКД") {
+    houseStatus[house] = "МКД"
+    houseCad[house] = cad
+  } else {
+    byStatus[house, st]++
   }
-  if ($23 != "") rooms[house]++
+
+  # помещение считаем один раз, даже если у него несколько комнат
+  if ($22 != "" && !((house, $22) in seen)) {
+    seen[house, $22] = 1
+    premises[house]++
+  }
+
+  # квартиры, где учтены отдельные комнаты
+  if (st == "ЧКВ" && !((house, "flat", $18) in seen)) {
+    seen[house, "flat", $18] = 1
+    roomFlats[house]++
+  }
 }
 
 END {
-  print "Адрес", "GUID дома", "GUID ФИАС", "ОКТМО", "Способ управления", "ОГРН УО",
-        "Управляющая организация", "Тип дома", "Состояние", "Общая площадь", "Жилая площадь",
-        "Дата сноса", "Помещений всего", "Жилых помещений", "Нежилых помещений", "Комнат"
+  print "Адрес", "Статус", "Кадастровый номер", "GUID дома", "GUID ФИАС", "ОКТМО",
+        "Способ управления", "ОГРН УО", "Управляющая организация", "Тип дома", "Состояние",
+        "Общая площадь", "Жилая площадь", "Дата сноса", "Помещений всего",
+        "КВ", "НЖ", "ОИ", "ЧКВ", "Квартир с комнатами"
   for (i = 1; i <= count; i++) {
     h = order[i]
-    print address[h], h, fias[h], oktmo[h], method[h], ogrn[h], company[h], kind[h], state[h],
-          area[h], living[h], demolished[h], premises[h] + 0, livingCount[h] + 0,
-          nonLiving[h] + 0, rooms[h] + 0
+    print address[h], houseStatus[h], houseCad[h], h, fias[h], oktmo[h],
+          method[h], ogrn[h], company[h], kind[h], state[h],
+          area[h], living[h], demolished[h], premises[h] + 0,
+          byStatus[h, "КВ"] + 0, byStatus[h, "НЖ"] + 0, byStatus[h, "ОИ"] + 0,
+          byStatus[h, "ЧКВ"] + 0, roomFlats[h] + 0
   }
+}
+
+function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
+
+function status(type, cad, room) {
+  if (type == "")                          return "МКД"
+  if (type == "Жилое"   && cad != "")      return "КВ"
+  if (type == "Нежилое" && cad != "")      return "НЖ"
+  if (type == "Нежилое")                   return "ОИ"
+  if (type == "Жилое"   && room != "")     return "ЧКВ"
+  return "?"
 }

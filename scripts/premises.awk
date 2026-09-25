@@ -3,7 +3,10 @@
 #
 # Формат файла:
 #   #<GUID дома>
-#   СТАТУС|№ помещения|№ комнаты|Кадастровый номер
+#   СТАТУС|№ помещения|№ комнаты|Кадастровый номер|ФИАС ID
+#
+# ФИАС ID зависит от статуса: у МКД — GUID дома, у комнат (ЧКВ) — GUID комнаты,
+# у остальных — GUID помещения.
 #
 # Запуск: awk -v out=data/premises -f scripts/premises.awk выгрузка*.csv
 
@@ -32,11 +35,19 @@ FNR == 1 { next }   # заголовок в каждой части выгруз
     print "#" house > file
     last[shard] = house
   }
-  print status(kind, cad, room), number, room, cad > file
+  st = status(kind, cad, room)
+  print st, number, room, cad, fiasId(st, house) > file
   total++
 }
 
 END { printf "Помещений разложено: %d\n", total > "/dev/stderr" }
+
+function fiasId(st, house,    id) {
+  if (st == "МКД") return (house == $1) ? "" : house
+  id = (st == "ЧКВ") ? trim($23) : ""
+  if (id == "") id = trim($22)
+  return id
+}
 
 function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
 

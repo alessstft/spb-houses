@@ -22,21 +22,6 @@
           <h1>Дома Санкт-Петербурга</h1>
           <p>Реестр жилищного фонда по данным ГИС ЖКХ</p>
         </div>
-        <label class="btn" id="upBtn" title="Загрузить файл с домами">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M12 16V4M7 9l5-5 5 5M4 20h16" />
-          </svg>
-          <span class="l">Загрузить файл</span><span class="s">Файл</span>
-          <input type="file" class="hidden" accept=".csv,.txt,.xlsx,.xls" data-file />
-        </label>
       </header>
       <div class="facade" aria-hidden="true"></div>
 
@@ -54,9 +39,9 @@
       <p class="status" id="status" role="status"></p>
 
       <main id="main" class="hidden">
-        <section class="search" aria-label="Поиск домов">
+        <form class="search" id="searchForm" role="search" aria-label="Поиск домов">
           <div class="field">
-            <label for="q">Адрес</label>
+            <label for="q">Адрес или кадастровый номер</label>
             <div class="inp" id="qWrap">
               <svg
                 viewBox="0 0 24 24"
@@ -72,37 +57,15 @@
               <input
                 type="search"
                 id="q"
-                placeholder="Улица и номер дома"
+                placeholder="Например: Марата 8"
                 autocomplete="off"
                 enterkeyhint="search"
               />
-              <button class="clear" type="button" data-clear="q" aria-label="Очистить адрес">×</button>
             </div>
-            <p class="hint">Например: Фонтанки 38 или Невский 28</p>
+            <p class="hint">Улица и номер дома, можно без «ул.» и «д.»</p>
           </div>
-          <div class="field">
-            <label for="st">Улица</label>
-            <div class="inp" id="stWrap">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z" />
-                <circle cx="12" cy="9.5" r="2.5" />
-              </svg>
-              <input type="search" id="st" list="streets" placeholder="Все улицы" autocomplete="off" />
-              <button class="clear" type="button" data-clear="st" aria-label="Очистить улицу">×</button>
-            </div>
-            <datalist id="streets"></datalist>
-            <p class="hint" id="stHint">Начните вводить и выберите из списка</p>
-          </div>
-          <button class="btn reset" type="button" id="reset">Сбросить</button>
-        </section>
+          <button class="btn primary" type="submit" id="searchBtn">Найти</button>
+        </form>
 
         <div class="found">
           <h2 id="foundTitle"></h2>

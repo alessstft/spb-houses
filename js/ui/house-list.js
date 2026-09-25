@@ -6,7 +6,7 @@ const CHEVRON =
 
 const LIST_HEADER = `
   <div class="lhead cols">
-    <div>Адрес</div><div>Тип дома</div><div>Состояние</div>
+    <div>Адрес</div><div>Статус</div><div>Кадастровый номер</div><div>Состояние</div>
     <div class="num">Площадь, м²</div><div class="num">Помещений</div><div></div>
   </div>`;
 
@@ -39,10 +39,11 @@ function highlight(text, query) {
 
 function renderItem(house, index, table, query) {
   const company = shortCompanyName(table.get(house, 'company'));
-  const type = table.get(house, 'type');
+  const status = table.get(house, 'status');
+  const cadastral = table.get(house, 'cadastral');
   const state = table.get(house, 'state');
   const area = table.get(house, 'area');
-  const premises = table.get(house, 'premises');
+  const premises = Number(table.get(house, 'premises')) || 0;
 
   return `
     <button class="item cols" type="button" data-index="${index}">
@@ -51,7 +52,8 @@ function renderItem(house, index, table, query) {
         ${company ? `<div class="a2">${escapeHtml(company)}</div>` : ''}
       </div>
       <div class="facts">
-        <div class="cell">${type ? `<span class="lbl">Тип:</span>${escapeHtml(type)}` : ''}</div>
+        <div class="cell">${status ? `<span class="badge mkd">${escapeHtml(status)}</span>` : ''}</div>
+        <div class="cell cad">${cadastral ? `<span class="lbl">Кад. №</span>${highlight(cadastral, query.includes(':') ? query : '')}` : ''}</div>
         <div class="cell">${state ? `<span class="badge ${stateClass(state)}">${escapeHtml(state)}</span>` : ''}</div>
         <div class="cell num">${area ? `<span class="lbl">Площадь:</span>${formatNumber(area)} м²` : ''}</div>
         <div class="cell num">${premises ? `<span class="lbl">Помещений:</span>${formatNumber(premises)}` : ''}</div>

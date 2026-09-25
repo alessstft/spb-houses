@@ -1,5 +1,7 @@
 // Чтение CSV/Excel и хранение последнего загруженного файла в IndexedDB
 
+import { isPremisesHeader } from './premises-table.js';
+
 const DB_NAME = 'spb-houses';
 const STORE = 'files';
 
@@ -15,8 +17,12 @@ function decodeText(buffer) {
 export function parseTable(buffer, fileName) {
   if (/\.(xlsx|xls)$/i.test(fileName)) {
     const book = XLSX.read(buffer, { type: 'array' });
-    const sheet = book.Sheets[book.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+    // raw: числа берём как есть, без форматирования ячейки (иначе «9,510.0»)
+    const sheets = book.SheetNames.map((name) =>
+      XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, defval: '', raw: true }),
+    );
+    // В книге с несколькими листами берём лист с помещениями, если он есть
+    return sheets.find((rows) => rows.length > 1 && isPremisesHeader(rows[0])) ?? sheets[0];
   }
   return Papa.parse(decodeText(buffer), { skipEmptyLines: true }).data;
 }

@@ -1,15 +1,10 @@
 import { MANAGEMENT_NAMES } from '../config.js';
 import { shortCompanyName } from '../address.js';
-import { escapeHtml, formatNumber, toNumber } from '../utils.js';
+import { escapeHtml, formatNumber, plural, toNumber } from '../utils.js';
 
 const dialog = document.getElementById('dlg');
 const titleEl = document.getElementById('dTitle');
 const bodyEl = document.getElementById('dBody');
-
-// Технические поля прячем в свёрнутый блок
-const TECH_COLUMN = /guid|идентиф|октмо|огрн|кпп|кадастр/i;
-// Эти поля уже показаны в плитках сверху
-const KPI_ROLES = ['address', 'area', 'livingArea', 'premises', 'living', 'nonLiving', 'rooms'];
 
 document.getElementById('dClose').addEventListener('click', () => dialog.close());
 dialog.addEventListener('click', (e) => {
@@ -17,64 +12,64 @@ dialog.addEventListener('click', (e) => {
 });
 
 function kpiTiles(house, table) {
+  const count = (role) => Number(table.get(house, role)) || 0;
+  const tile = (value, label, extra = '') =>
+    `<div class="kpi ${extra}"><b>${value}</b><span>${label}</span></div>`;
   const tiles = [];
-  const add = (role, label, digits = 0, unit = '') => {
-    const value = table.get(house, role);
-    if (value && toNumber(value)) tiles.push([`${formatNumber(value, digits)}${unit}`, label]);
-  };
-  add('area', 'общая площадь', 1, ' м²');
-  add('livingArea', 'жилая площадь', 1, ' м²');
-  add('premises', 'помещений');
-  add('living', 'жилых');
-  add('nonLiving', 'нежилых');
-  add('rooms', 'комнат в коммуналках');
 
-  if (!tiles.length) return '';
-  const html = tiles.map(([value, label]) => `<div class="kpi"><b>${value}</b><span>${label}</span></div>`);
-  return `<div class="kpis">${html.join('')}</div>`;
+  const area = table.get(house, 'area');
+  const livingArea = table.get(house, 'livingArea');
+  if (toNumber(area)) tiles.push(tile(`${formatNumber(area, 1)} м²`, 'общая площадь'));
+  if (toNumber(livingArea)) tiles.push(tile(`${formatNumber(livingArea, 1)} м²`, 'жилая площадь'));
+
+  if (table.has('kv')) {
+    tiles.push(tile(count('kv'), 'КВ — квартиры'));
+    tiles.push(tile(count('nzh'), 'НЖ — нежилые'));
+    tiles.push(tile(count('oi'), 'ОИ — общее имущество'));
+    const rooms = count('chkv');
+    const flats = count('roomFlats');
+    tiles.push(
+      tile(
+        rooms,
+        `ЧКВ — ${plural(rooms, 'комната', 'комнаты', 'комнат')}` +
+          (flats ? ` в ${flats} ${plural(flats, 'квартире', 'квартирах', 'квартирах')}` : ''),
+      ),
+    );
+  }
+  return tiles.length ? `<div class="kpis">${tiles.join('')}</div>` : '';
+}
+
+function field(label, value) {
+  if (!value || value === '-') return '';
+  return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`;
 }
 
 function detailGroups(house, table) {
-  const used = new Set(KPI_ROLES.map((role) => table.roles[role]).filter((i) => i >= 0));
-
-  const field = (index, label, value = house.values[index]) => {
-    used.add(index);
-    if (!value || value === '-') return '';
-    return `<dt>${escapeHtml(label || table.columns[index])}</dt><dd>${escapeHtml(value)}</dd>`;
-  };
-  const byRole = (role, label, value) => (table.has(role) ? field(table.roles[role], label, value) : '');
-
   const management = table.get(house, 'management');
   const groups = [
     [
       'О доме',
-      byRole('type', 'Тип дома') +
-        byRole('state', 'Состояние') +
-        byRole('year') +
-        byRole('floors') +
-        byRole('demolished'),
+      field('Статус', table.get(house, 'status')) +
+        field('Кадастровый номер', table.get(house, 'cadastral')) +
+        field('Тип дома', table.get(house, 'type')) +
+        field('Состояние', table.get(house, 'state')) +
+        field('Дата сноса', table.get(house, 'demolished')),
     ],
     [
       'Управление',
-      byRole('management', 'Способ управления', MANAGEMENT_NAMES[management] || management) +
-        byRole('company', 'Организация', shortCompanyName(table.get(house, 'company'))),
+      field('Способ управления', MANAGEMENT_NAMES[management] || management) +
+        field('Организация', shortCompanyName(table.get(house, 'company'))),
     ],
   ];
-
-  let other = '';
-  let tech = '';
-  table.columns.forEach((title, i) => {
-    if (used.has(i)) return;
-    if (TECH_COLUMN.test(title)) tech += field(i);
-    else other += field(i);
-  });
-  if (other) groups.push(['Прочие сведения', other]);
 
   let html = groups
     .filter(([, content]) => content)
     .map(([title, content]) => `<section class="grp"><h3>${title}</h3><dl>${content}</dl></section>`)
     .join('');
-  if (tech) html += `<details class="grp"><summary>Коды и идентификаторы</summary><dl>${tech}</dl></details>`;
+
+  // В раскрывающемся блоке — все поля строки как есть
+  const all = table.columns.map((title, i) => field(title, house.values[i])).join('');
+  html += `<details class="grp"><summary>Все поля</summary><dl>${all}</dl></details>`;
   return html;
 }
 

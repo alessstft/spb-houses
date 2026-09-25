@@ -3,8 +3,15 @@ import { premisesUrl } from './config.js';
 // Помещения разложены по 16 файлам по первому символу GUID дома (см. scripts/premises.awk).
 // Формат файла:
 //   #<GUID дома>
-//   СТАТУС|№ помещения|№ комнаты|Кадастровый номер
+//   СТАТУС|№ помещения|№ комнаты|Кадастровый номер|ФИАС ID
 const cache = new Map();
+
+// Помещения из загруженного пользователем файла (если он на уровне помещений)
+let localPremises = null;
+
+export function setLocalPremises(premisesByHouse) {
+  localPremises = premisesByHouse;
+}
 
 function shardOf(guid) {
   return /^[0-9a-f]/.test(guid) ? guid[0] : 'x';
@@ -20,6 +27,8 @@ async function loadShard(shard) {
 }
 
 export async function getPremises(houseGuid) {
+  if (localPremises) return [...(localPremises.get(houseGuid) || [])];
+
   const text = await loadShard(shardOf(houseGuid));
   const result = [];
   let inHouse = false;
@@ -31,8 +40,8 @@ export async function getPremises(houseGuid) {
     }
     if (!inHouse || !line.trim()) continue;
 
-    const [status, number = '', room = '', cadastral = ''] = line.replace(/\r$/, '').split('|');
-    result.push({ status, number, room, cadastral });
+    const [status, number = '', room = '', cadastral = '', fiasId = ''] = line.replace(/\r$/, '').split('|');
+    result.push({ status, number, room, cadastral, fiasId });
   }
   return result;
 }

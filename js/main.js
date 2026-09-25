@@ -1,8 +1,10 @@
 import { HOUSES_URL, PAGE_SIZE } from './config.js';
 import { HouseTable } from './house-table.js';
 import { loadLastFile, parseTable, readFile, saveLastFile } from './file-reader.js';
+import { groupByHouse, isPremisesHeader } from './premises-table.js';
+import { setLocalPremises } from './premises.js';
 import { exportRegistry } from './registry-export.js';
-import { debounce, escapeHtml, plural } from './utils.js';
+import { escapeHtml, plural } from './utils.js';
 import { setStatus, toast } from './ui/notify.js';
 import { renderList, renderSummary } from './ui/house-list.js';
 import { openHouseCard } from './ui/house-card.js';
@@ -10,11 +12,9 @@ import { openHouseCard } from './ui/house-card.js';
 const el = {
   empty: document.getElementById('empty'),
   main: document.getElementById('main'),
+  form: document.getElementById('searchForm'),
   query: document.getElementById('q'),
-  street: document.getElementById('st'),
-  streets: document.getElementById('streets'),
-  streetHint: document.getElementById('stHint'),
-  reset: document.getElementById('reset'),
+  searchBtn: document.getElementById('searchBtn'),
   list: document.getElementById('list'),
   more: document.getElementById('more'),
   source: document.getElementById('source'),
@@ -24,16 +24,27 @@ const state = {
   table: null,
   found: [],
   limit: PAGE_SIZE,
+  appliedQuery: '', // запрос, по которому сейчас показаны результаты
 };
 
+// Файл может быть списком домов (spb_houses.csv) или списком помещений
+// (выгрузка ГИС ЖКХ, «Фрагмент данных»). Во втором случае дома собираем сами.
+function buildTable(rows, fileName) {
+  const firstRow = rows.find((row) => row.some((cell) => String(cell).trim())) || [];
+  if (!isPremisesHeader(firstRow)) {
+    setLocalPremises(null);
+    return new HouseTable(rows, fileName);
+  }
+  const { houseRows, premisesByHouse } = groupByHouse(rows.slice(rows.indexOf(firstRow)));
+  setLocalPremises(premisesByHouse);
+  return new HouseTable(houseRows, fileName);
+}
+
 function showTable(buffer, fileName) {
-  const table = new HouseTable(parseTable(buffer, fileName), fileName);
+  const table = buildTable(parseTable(buffer, fileName), fileName);
   state.table = table;
 
-  el.streets.innerHTML = table.streets.map((s) => `<option value="${escapeHtml(s)}">`).join('');
-  const streetCount = table.streets.length;
-  el.streetHint.textContent = `Начните вводить и выберите из списка (${streetCount.toLocaleString('ru-RU')} ${plural(streetCount, 'улица', 'улицы', 'улиц')})`;
-  el.source.textContent = `Источник: ${fileName}, ${table.houses.length.toLocaleString('ru-RU')} строк.`;
+  el.source.textContent = `Источник: ${fileName}`;
 
   el.empty.classList.add('hidden');
   el.main.classList.remove('hidden');
@@ -41,23 +52,26 @@ function showTable(buffer, fileName) {
   applyFilter();
 }
 
-function applyFilter() {
-  const query = el.query.value;
-  const street = el.street.value;
+// Кнопка работает как «Найти», пока запрос не выполнен, и как «Сбросить» после.
+// Если запрос изменили, она снова становится «Найти».
+function updateSearchButton() {
+  const showsResults = state.appliedQuery !== '' && el.query.value.trim() === state.appliedQuery;
+  el.searchBtn.textContent = showsResults ? 'Сбросить' : 'Найти';
+  el.searchBtn.classList.toggle('primary', !showsResults);
+}
 
-  state.found = state.table.filter({ query, street });
+function applyFilter(query = '') {
+  state.appliedQuery = query.trim();
+  state.found = state.table.search(state.appliedQuery);
   state.limit = PAGE_SIZE;
 
-  document.getElementById('qWrap').classList.toggle('has', Boolean(query));
-  document.getElementById('stWrap').classList.toggle('has', Boolean(street));
-  el.reset.classList.toggle('off', !query && !street);
-
-  renderSummary(state.found, Boolean(query.trim() || street.trim()));
+  renderSummary(state.found, Boolean(state.appliedQuery));
   renderPage();
+  updateSearchButton();
 }
 
 function renderPage() {
-  renderList(el.list, state.found, { table: state.table, query: el.query.value, limit: state.limit });
+  renderList(el.list, state.found, { table: state.table, query: state.appliedQuery, limit: state.limit });
 
   const left = state.found.length - state.limit;
   el.more.parentElement.classList.toggle('hidden', left <= 0);
@@ -103,27 +117,14 @@ async function handleFile(file) {
 }
 
 function bindEvents() {
-  const onInput = debounce(applyFilter, 140);
-  el.query.addEventListener('input', onInput);
-  el.street.addEventListener('input', onInput);
-  el.query.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') el.query.blur(); // прячем клавиатуру на телефоне
+  el.form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const showsResults = el.searchBtn.textContent === 'Сбросить';
+    if (showsResults) el.query.value = '';
+    applyFilter(el.query.value);
+    el.query.blur(); // прячем клавиатуру на телефоне
   });
-
-  document.querySelectorAll('[data-clear]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const input = document.getElementById(button.dataset.clear);
-      input.value = '';
-      applyFilter();
-      input.focus();
-    });
-  });
-
-  el.reset.addEventListener('click', () => {
-    el.query.value = '';
-    el.street.value = '';
-    applyFilter();
-  });
+  el.query.addEventListener('input', updateSearchButton);
 
   el.list.addEventListener('click', (e) => {
     const item = e.target.closest('.item');
@@ -160,27 +161,27 @@ function bindEvents() {
   });
 }
 
-// Сначала показываем файл, который пользователь загружал сам, иначе — данные с сайта
+// Основной источник — данные на сайте; сохранённый файл нужен, только если их нет
 async function init() {
   bindEvents();
-
-  const saved = await loadLastFile();
-  if (saved) {
-    try {
-      showTable(saved.buffer, saved.name);
-      return;
-    } catch {
-      // сохранённый файл испорчен — грузим данные с сайта
-    }
-  }
 
   try {
     setStatus('Загружаю список домов…');
     const response = await fetch(HOUSES_URL, { cache: 'no-cache' });
     if (!response.ok) throw new Error(response.statusText);
     showTable(await response.arrayBuffer(), 'spb_houses.csv');
+    return;
   } catch {
     setStatus();
+  }
+
+  const saved = await loadLastFile();
+  if (saved) {
+    try {
+      showTable(saved.buffer, saved.name);
+    } catch {
+      // сохранённый файл испорчен — остаётся экран загрузки
+    }
   }
 }
 

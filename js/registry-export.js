@@ -1,4 +1,4 @@
-import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_SHEETS, STATUS_GROUP } from './config.js';
+import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_FRAME, REGISTRY_SHEETS, STATUS_GROUP } from './config.js';
 import { getPremises } from './premises.js';
 import { registryAddress, shortAddress } from './address.js';
 import { loadScript, naturalCompare, toNumber } from './utils.js';
@@ -17,46 +17,38 @@ function sortPremises(list) {
   );
 }
 
-function toRegistryRow(premise, house, table) {
-  const baseAddress = registryAddress(house.address);
-
-  if (premise.status === 'МКД') {
-    const area = toNumber(table.get(house, 'area'));
-    return [
-      'МКД',
-      `г. ${baseAddress}`,
-      null,
-      area,
-      premise.cadastral || null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      'Здание',
-      null,
-    ];
-  }
-
+// «…, литер А, кв. 3», «…, литер А, пом. 1-Н», «…, литер А, кв. 17, ком. 2,5»
+function premiseAddress(houseAddress, premise) {
   const isLiving = premise.status === 'КВ' || premise.status === 'ЧКВ';
-  let address = `${baseAddress}, ${isLiving ? 'кв.' : 'пом.'} ${premise.number}`;
+  let address = `${houseAddress}, ${isLiving ? 'кв.' : 'пом.'} ${premise.number}`;
   if (premise.room) address += `, ком. ${premise.room}`;
-  const number = /^\d+$/.test(premise.number) ? Number(premise.number) : premise.number;
+  return address;
+}
 
-  return [
-    premise.status,
-    address,
-    number,
-    null,
-    premise.cadastral || null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    'Помещение',
-    null,
-  ];
+function toRegistryRow(premise, { house, table, houseCadastral }) {
+  const houseAddress = registryAddress(house.address);
+  const isHouse = premise.status === 'МКД';
+
+  const fields = {
+    status: premise.status,
+    address: isHouse ? `г. ${houseAddress}` : premiseAddress(houseAddress, premise),
+    number: isHouse ? null : /^\d+$/.test(premise.number) ? Number(premise.number) : premise.number,
+    area: isHouse ? toNumber(table.get(house, 'area')) : null,
+    cadastral: premise.cadastral,
+    type: isHouse ? 'Здание' : 'Помещение',
+    fiasId: premise.fiasId,
+    houseCadastral,
+  };
+  return REGISTRY_COLUMNS.map((column) => (column.key && fields[column.key]) || null);
+}
+
+function cellBorder(col, isHeader) {
+  const { from, to } = REGISTRY_FRAME;
+  if (col >= from && col <= to) {
+    return { left: THIN, top: isHeader ? MEDIUM : THIN, bottom: THIN, right: col === to ? MEDIUM : THIN };
+  }
+  if (col > to) return { left: THIN, top: THIN, bottom: THIN, right: THIN };
+  return { right: THIN, bottom: THIN };
 }
 
 function styleSheet(sheet) {
@@ -76,11 +68,7 @@ function styleSheet(sheet) {
         pattern: 'solid',
         fgColor: { argb: isHeader ? 'FFFFFF00' : 'FFFFFFFF' },
       };
-      // последние три столбца в шаблоне выделены рамкой
-      cell.border =
-        col >= 10
-          ? { left: THIN, top: isHeader ? MEDIUM : THIN, bottom: THIN, right: col === 12 ? MEDIUM : THIN }
-          : { right: THIN, bottom: THIN };
+      cell.border = cellBorder(col, isHeader);
     }
   });
 
@@ -120,6 +108,9 @@ export async function exportRegistry(house, table) {
   const [premises] = await Promise.all([getPremises(guid), loadScript(EXCELJS_URL, 'ExcelJS')]);
   if (!premises.length) throw new Error('по этому дому в данных нет помещений');
 
+  // кадастровый номер дома берём из строки МКД и повторяем у каждого помещения
+  const houseCadastral = premises.find((p) => p.status === 'МКД')?.cadastral || '';
+
   const workbook = new ExcelJS.Workbook();
   REGISTRY_SHEETS.forEach((name) => workbook.addWorksheet(name));
   workbook.views = [{ activeTab: REGISTRY_SHEETS.indexOf('Помещения') }];
@@ -127,7 +118,7 @@ export async function exportRegistry(house, table) {
   const sheet = workbook.getWorksheet('Помещения');
   sheet.addRow(REGISTRY_COLUMNS.map((column) => column.title));
   for (const premise of sortPremises(premises)) {
-    sheet.addRow(toRegistryRow(premise, house, table));
+    sheet.addRow(toRegistryRow(premise, { house, table, houseCadastral }));
   }
   styleSheet(sheet);
 
