@@ -589,7 +589,9 @@ dialog.sheet[open] {
   flex: 1;
 }
 .sh-head .sub {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   font-size: 14px;
   font-weight: 400;
   color: var(--muted);
@@ -734,8 +736,12 @@ details.grp summary {
 .copy:hover {
   color: var(--neva);
 }
+.sh-head .sub .copy {
+  flex: 1;
+}
+
 .maplink {
-  margin-left: 8px;
+  margin-left: auto;
   color: var(--neva);
   font-weight: 500;
   white-space: nowrap;
@@ -802,4 +808,70 @@ details.grp summary {
 }
 .badge.st-ЧКВ {
   background: var(--nt-bg);
+}
+
+/* Статистика по статусам в карточке */
+.stats ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.stats li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.stats li:first-child {
+  font-weight: 600;
+}
+.badge.st-ММ {
+  background: var(--ochre-soft);
+}
+.badge.st-ERR {
+  background: var(--bad);
+  color: #fff;
+}
+
+/* Раскрытие комнат под квартирой */
+.ptable .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.expand {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.expand span {
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.expand[aria-expanded='true'] span {
+  transform: rotate(90deg);
+}
+.ptable .nowrap {
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .ptable table {
+    font-size: 13px;
+  }
+  .ptable th,
+  .ptable td {
+    padding-right: 8px;
+  }
+}
+.ptable tr.room td {
+  background: var(--hover);
+  font-size: 13px;
+}
+.ptable tr.room td:first-child {
+  padding-left: 14px;
 }
