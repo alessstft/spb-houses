@@ -2,7 +2,11 @@
 // Сворачиваем её в список домов прямо в браузере, как это делает scripts/houses.awk,
 // а помещения держим в памяти для выгрузки реестра.
 
+import { STATUS_ORDER } from './config.js';
 import { cleanCadastral, fiasIdFor, premiseStatus } from './statuses.js';
+
+// Статусы помещений, которые считаем по дому (всё, кроме самого МКД)
+const COUNTED = STATUS_ORDER.filter((status) => status !== 'МКД');
 
 const COLUMNS = {
   address: /^адрес ожф$/,
@@ -45,8 +49,11 @@ const HOUSE_HEADER = [
   'Помещений всего',
   'КВ',
   'НЖ',
+  'ММ',
   'ОИ',
+  'ЛК',
   'ЧКВ',
+  'ERR',
   'Квартир с комнатами',
 ];
 
@@ -101,7 +108,7 @@ export function groupByHouse(rows) {
         cadastral: '',
         premiseIds: new Set(),
         roomFlats: new Set(),
-        counts: { КВ: 0, НЖ: 0, ОИ: 0, ЧКВ: 0 },
+        counts: Object.fromEntries(COUNTED.map((status) => [status, 0])),
       });
       premisesByHouse.set(houseGuid, []);
     }
@@ -119,8 +126,9 @@ export function groupByHouse(rows) {
     if (status === 'МКД') {
       house.status = 'МКД';
       house.cadastral = cadastral;
-    } else if (status in house.counts) {
-      house.counts[status]++;
+    } else {
+      const key = status in house.counts ? status : 'ERR';
+      house.counts[key]++;
     }
     if (premiseGuid) house.premiseIds.add(premiseGuid);
     if (status === 'ЧКВ') house.roomFlats.add(number);
@@ -144,10 +152,7 @@ export function groupByHouse(rows) {
       guid,
       ...house.info,
       house.premiseIds.size,
-      counts['КВ'],
-      counts['НЖ'],
-      counts['ОИ'],
-      counts['ЧКВ'],
+      ...COUNTED.map((status) => counts[status]),
       house.roomFlats.size,
     ]);
   }

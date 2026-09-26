@@ -1,4 +1,4 @@
-import { STATUS_GROUP, premisesUrl } from './config.js';
+import { STATUS_ORDER, premisesUrl } from './config.js';
 import { naturalCompare } from './utils.js';
 
 // Помещения разложены по 16 файлам по первому символу GUID дома (см. scripts/premises.awk).
@@ -47,14 +47,18 @@ export async function getPremises(houseGuid) {
   return result;
 }
 
-// Порядок как в реестре: дом, квартиры (комнаты сразу под своей квартирой), нежилые
+// Порядок как в реестре: МКД / КВ / НЖ / ММ / ОИ / ЛК / ЧКВ / ERR,
+// внутри статуса — по номеру помещения, затем комнаты
+const statusRank = (status) => {
+  const rank = STATUS_ORDER.indexOf(status);
+  return rank < 0 ? STATUS_ORDER.length : rank;
+};
+
 export function sortPremises(list) {
   return list.sort(
     (a, b) =>
-      (STATUS_GROUP[a.status] ?? 3) - (STATUS_GROUP[b.status] ?? 3) ||
+      statusRank(a.status) - statusRank(b.status) ||
       naturalCompare(a.number, b.number) ||
-      // комнаты идут сразу под своей квартирой
-      (a.status === 'ЧКВ') - (b.status === 'ЧКВ') ||
       naturalCompare(a.room, b.room),
   );
 }

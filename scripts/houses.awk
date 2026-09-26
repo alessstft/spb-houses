@@ -2,7 +2,7 @@
 # Запуск: cat выгрузка*.csv | awk -f scripts/houses.awk > data/spb_houses.csv
 #
 # Статусы помещений считаются по тем же правилам, что в status.awk:
-# МКД, КВ, НЖ, ОИ, ЧКВ.
+# МКД, КВ, НЖ, ММ, ОИ, ЛК, ЧКВ, ERR.
 
 BEGIN { FS = "|"; OFS = "|" }
 
@@ -48,14 +48,15 @@ END {
   print "Адрес", "Статус", "Кадастровый номер", "GUID дома", "GUID ФИАС", "ОКТМО",
         "Способ управления", "ОГРН УО", "Управляющая организация", "Тип дома", "Состояние",
         "Общая площадь", "Жилая площадь", "Дата сноса", "Помещений всего",
-        "КВ", "НЖ", "ОИ", "ЧКВ", "Квартир с комнатами"
+        "КВ", "НЖ", "ММ", "ОИ", "ЛК", "ЧКВ", "ERR", "Квартир с комнатами"
   for (i = 1; i <= count; i++) {
     h = order[i]
     print address[h], houseStatus[h], houseCad[h], h, fias[h], oktmo[h],
           method[h], ogrn[h], company[h], kind[h], state[h],
           area[h], living[h], demolished[h], premises[h] + 0,
-          byStatus[h, "КВ"] + 0, byStatus[h, "НЖ"] + 0, byStatus[h, "ОИ"] + 0,
-          byStatus[h, "ЧКВ"] + 0, roomFlats[h] + 0
+          byStatus[h, "КВ"] + 0, byStatus[h, "НЖ"] + 0, byStatus[h, "ММ"] + 0,
+          byStatus[h, "ОИ"] + 0, byStatus[h, "ЛК"] + 0, byStatus[h, "ЧКВ"] + 0,
+          byStatus[h, "ERR"] + 0, roomFlats[h] + 0
   }
 }
 
@@ -63,9 +64,10 @@ function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
 
 function status(type, cad, room) {
   if (type == "")                          return "МКД"
+  if (type ~ /ашино/)                      return "ММ"
   if (type == "Жилое"   && cad != "")      return "КВ"
   if (type == "Нежилое" && cad != "")      return "НЖ"
   if (type == "Нежилое")                   return "ОИ"
   if (type == "Жилое"   && room != "")     return "ЧКВ"
-  return "?"
+  return "ERR"
 }

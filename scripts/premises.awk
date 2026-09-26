@@ -54,9 +54,10 @@ function trim(s) { gsub(/^[ \t]+|[ \t\r]+$/, "", s); return s }
 # Те же правила, что в status.awk
 function status(kind, cad, room) {
   if (kind == "")                          return "МКД"
+  if (kind ~ /ашино/)                      return "ММ"
   if (kind == "Жилое"   && cad != "")      return "КВ"
   if (kind == "Нежилое" && cad != "")      return "НЖ"
   if (kind == "Нежилое")                   return "ОИ"
   if (kind == "Жилое"   && room != "")     return "ЧКВ"
-  return "?"
+  return "ERR"
 }

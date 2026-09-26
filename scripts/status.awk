@@ -6,7 +6,8 @@
 #   НЖ  — нежилое, есть кадастровый номер
 #   ОИ  — нежилое, нет кадастрового номера
 #   ЧКВ — жилое, нет кадастрового номера, есть номер комнаты
-#   ?   — не подошло ни одно правило (для проверки)
+#   ММ  — машино-место
+#   ERR — не подошло ни одно правило (для проверки)
 BEGIN{ FS="|"; OFS="|" }
 FNR==1{ if(!hdr){ print $0, "СТАТУС"; hdr=1 } next }   # заголовок только один раз
 {
@@ -15,16 +16,17 @@ FNR==1{ if(!hdr){ print $0, "СТАТУС"; hdr=1 } next }   # заголово�
   room=$19; gsub(/^[ \t]+|[ \t\r]+$/,"",room)
   hasKad = (kad!="" && kad!="нет" && kad!="-")
   if (tip=="")                          s="МКД"
+  else if (tip ~ /ашино/)               s="ММ"
   else if (tip=="Жилое"   &&  hasKad)   s="КВ"
   else if (tip=="Нежилое" &&  hasKad)   s="НЖ"
   else if (tip=="Нежилое" && !hasKad)   s="ОИ"
   else if (tip=="Жилое" && !hasKad && room!="") s="ЧКВ"
-  else                                  s="?"
+  else                                  s="ERR"
   sub(/\r$/,"")
   print $0, s
   cnt[s]++
 }
 END{
-  split("МКД КВ НЖ ОИ ЧКВ ?", order, " ")
-  for(i=1;i<=6;i++) if(cnt[order[i]]) printf "%-4s %d\n", order[i], cnt[order[i]] > "/dev/stderr"
+  split("МКД КВ НЖ ММ ОИ ЛК ЧКВ ERR", order, " ")
+  for(i=1;i<=8;i++) if(cnt[order[i]]) printf "%-4s %d\n", order[i], cnt[order[i]] > "/dev/stderr"
 }

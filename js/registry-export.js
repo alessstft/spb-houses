@@ -1,4 +1,4 @@
-import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_FRAME, REGISTRY_SHEETS } from './config.js';
+import { EXCELJS_URL, REGISTRY_COLUMNS, REGISTRY_FRAME, REGISTRY_SHEETS, REGISTRY_STATS } from './config.js';
 import { getPremises, sortPremises } from './premises.js';
 import { registryAddress, shortAddress } from './address.js';
 import { loadScript, toNumber } from './utils.js';
@@ -22,7 +22,8 @@ function toRegistryRow(premise, { house, table, houseCadastral }) {
     status: premise.status,
     address: isHouse ? `г. ${houseAddress}` : premiseAddress(houseAddress, premise),
     number: isHouse ? null : /^\d+$/.test(premise.number) ? Number(premise.number) : premise.number,
-    area: isHouse ? toNumber(table.get(house, 'area')) : null,
+    // площадь помещения появится, когда будет в данных (в ГИС ЖКХ её нет)
+    area: toNumber(isHouse ? table.get(house, 'area') : premise.area),
     cadastral: premise.cadastral,
     type: isHouse ? 'Здание' : 'Помещение',
     fiasId: premise.fiasId,
@@ -63,6 +64,86 @@ function styleSheet(sheet) {
 
   sheet.getRow(1).height = 51;
   sheet.views = [{ state: 'frozen', ySplit: 1, activeCell: 'A2' }];
+}
+
+const columnLetter = (key) => String.fromCharCode(65 + REGISTRY_COLUMNS.findIndex((c) => c.key === key));
+
+/**
+ * Добавляет справа от реестра таблицу «Статус / Кол-во / Площадь / % площади»
+ * и формулу доли в столбец «Доля ОИ, %». Всё считается формулами Excel:
+ * площадей в ГИС ЖКХ нет, их вносят вручную, и итоги пересчитываются сами.
+ */
+function addStats(sheet, lastRow) {
+  const status = columnLetter('status');
+  const area = columnLetter('area');
+  const share = columnLetter('share');
+  const statusRange = `$${status}$2:$${status}$${lastRow}`;
+  const areaRange = `$${area}$2:$${area}$${lastRow}`;
+
+  const col = REGISTRY_STATS.firstColumn;
+  const letter = (offset) => String.fromCharCode(64 + col + offset);
+  const [countCol, areaCol, percentCol] = [letter(1), letter(2), letter(3)];
+  const totalArea = `$${areaCol}$2`; // строка «КВ+НЖ+ММ»
+
+  const { main, other } = REGISTRY_STATS;
+  const put = (rowNumber, values) =>
+    values.forEach((value, i) => {
+      sheet.getCell(rowNumber, col + i).value = value;
+    });
+
+  put(1, ['Статус', 'Кол-во', 'Площадь, м²', '% площади']);
+  put(2, [
+    main.join('+'),
+    { formula: main.map((s) => `COUNTIF(${statusRange},"${s}")`).join('+') },
+    { formula: main.map((s) => `SUMIF(${statusRange},"${s}",${areaRange})`).join('+') },
+    1,
+  ]);
+  main.forEach((s, i) => {
+    const row = 3 + i;
+    put(row, [
+      s,
+      { formula: `COUNTIF(${statusRange},"${s}")` },
+      { formula: `SUMIF(${statusRange},"${s}",${areaRange})` },
+      { formula: `IF(${totalArea}=0,0,${areaCol}${row}/${totalArea})` },
+    ]);
+  });
+  other.forEach((s, i) => {
+    const row = 3 + main.length + i;
+    put(row, [
+      s,
+      { formula: `COUNTIF(${statusRange},"${s}")` },
+      { formula: `SUMIF(${statusRange},"${s}",${areaRange})` },
+      null,
+    ]);
+  });
+  const lastStatsRow = 2 + main.length + other.length;
+
+  // Оформление блока
+  for (let row = 1; row <= lastStatsRow; row++) {
+    for (let i = 0; i < 4; i++) {
+      const cell = sheet.getCell(row, col + i);
+      cell.font = { name: 'Arial Narrow', size: 8, bold: row <= 2 };
+      cell.border = { top: THIN, left: THIN, bottom: THIN, right: THIN };
+      if (row === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+    }
+    sheet.getCell(row, col + 2).numFmt = '#,##0.0';
+    sheet.getCell(row, col + 3).numFmt = '0.0%';
+  }
+  sheet.getColumn(col).width = 9;
+  sheet.getColumn(col + 1).width = 7;
+  sheet.getColumn(col + 2).width = 10;
+  sheet.getColumn(col + 3).width = 8;
+
+  // Доля ОИ, % = площадь помещения / площадь всех КВ+НЖ+ММ × 100
+  for (let row = 2; row <= lastRow; row++) {
+    const rowStatus = sheet.getCell(`${status}${row}`).value;
+    if (!main.includes(rowStatus)) continue;
+    const cell = sheet.getCell(`${share}${row}`);
+    cell.value = {
+      formula: `IF(OR(${area}${row}="",${totalArea}=0),"",ROUND(${area}${row}/${totalArea}*100,3))`,
+    };
+    cell.numFmt = '0.000';
+  }
 }
 
 function download(buffer, fileName) {
@@ -110,6 +191,8 @@ export async function exportRegistry(house, table) {
     sheet.addRow(toRegistryRow(premise, { house, table, houseCadastral }));
   }
   styleSheet(sheet);
+  addStats(sheet, sheet.rowCount);
+  workbook.calcProperties.fullCalcOnLoad = true; // Excel пересчитает формулы при открытии
 
   download(await workbook.xlsx.writeBuffer(), fileNameFor(house));
   return premises.filter((p) => p.status !== 'МКД').length;
