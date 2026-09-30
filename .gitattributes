@@ -1,0 +1,4 @@
+# Скрипты для Linux должны оставаться с окончаниями строк LF, иначе bash их не запустит
+*.sh  text eol=lf
+*.sql text eol=lf
+*.awk text eol=lf

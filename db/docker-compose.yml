@@ -1,0 +1,19 @@
+# Локальная база для разработки: PostgreSQL + данные ГИС ЖКХ по Петербургу
+services:
+  db:
+    image: postgres:17
+    container_name: reestr-db
+    environment:
+      POSTGRES_DB: reestr
+      POSTGRES_USER: reestr
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-reestr_local}
+    ports:
+      - "5432:5432"
+    shm_size: 256mb
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # данные базы переживают перезапуск контейнера
+      - ./sql:/sql:ro                     # наши SQL-скрипты
+      - "${IMPORT_DIR}:/import:ro"        # папка с CSV из архива ГИС ЖКХ (только чтение)
+
+volumes:
+  pgdata:
